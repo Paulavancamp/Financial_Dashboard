@@ -6,7 +6,7 @@ lastused <- "FV"
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
-    navbarPage("Paula and Louis's tool" ,
+    navbarPage("Financial Tool Dashboard",
                # Application title
                tabPanel("Future Value",
                         # Sidebar with a slider input for number of bins
@@ -26,11 +26,42 @@ ui <- fluidPage(
                             )
                         )
                ),
-               tabPanel("Other"
+               tabPanel("Insurance Comparator",
+                        sidebarPanel(
+                          h4("Plan Specific Information"),
+                          textInput("plan1", "Plan 1 Name:", "general"),
+                          numericInput("monthly", "Monthly Premium", value=0),
+                          
+                          
+                          h4("Related Recurring Costs"),
+                          numericInput("recuring", "Estimated Cost", value=0),
+                          numericInput("number", "Number of Charges", value=0),
+                          selectInput("rate", "Each:", c("day", "week", "month", "year")),
+                          
+                          h4("One Time Accident Costs"),
+                          numericInput("singleExpense", "Total Estimated Cost", value=0),
+                          
+                          submitButton("update graph")
+                        ),
+                        mainPanel(
+                          sliderInput("planTimeline", "Years:", 1, 50, 10),
+                          plotOutput("insuranceCostPlot")
 
-               )
+                        )
+               ), #close insurance panel
+               
+               tabPanel("Car Buying Calculator",
+                        h3("placeholder")
+                        
+               ), #close car purchase calculator
+               
+               tabPanel("Mortgage Manager",
+                        h3("placeholder"),
+                        h4("https://www.excel-easy.com/examples/loan-amortization-schedule.html")
+                        
+               ) #close mortgage calculator
 
-    )
+    ) #close main tab panel
 )
 
 # Define server logic required to draw a histogram
@@ -70,10 +101,17 @@ server <- function(input, output,session) {
         result <- input$PV * (1 + (input$interest)/100)^(x)
         plot(x,result)
         lines(x,result)
-
-        # draw the histogram with the specified number of bins
-        #hist(x, breaks = bins, col = 'darkgray', border = 'white')
     })
+    
+    #render a line chart to visualize cost over time for each plan
+    output$insuranceCostPlot <- renderPlot({
+      x <- c(0:input$planTimeline)
+      result <- input$monthly*(x)*12
+      plot(x,result)
+      lines(x,result, )
+      
+    })
+    
 
 }
 
