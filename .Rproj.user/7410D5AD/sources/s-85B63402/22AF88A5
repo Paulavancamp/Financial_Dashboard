@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1585168980863.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "22AF88A5",
+    "lastKnownWriteTime" : 1584803253,
+    "last_content_update" : 1584803253,
+    "path" : "~/BUAD1930/Data_Viz_Project/app.R",
+    "project_path" : "app.R",
+    "properties" : {
+        "cursorPosition" : "62,6",
+        "scrollLine" : "32"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

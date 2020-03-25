@@ -1,0 +1,71 @@
+#
+# This is a Shiny web application. You can run the application by clicking
+# the 'Run App' button above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
+
+library(shiny)
+
+# Define UI for application that draws a histogram
+ui <- fluidPage(
+   
+   # Application title
+   titlePanel("Insurance Comparator"),
+   
+    h4("Examine which plan is best for you based on the metrics you choose.  
+      Consider how costs will change based on one-time injuries or reaccuring
+      medical costs. "),
+   
+   #Starting code for Insurance comparator tab 
+   sidebarPanel(
+     h2("Enter Insurance plan information"),
+     textInput("plan", "Plan Name:", value = "plan"),
+     numericInput("deductable", "Deductable:", value = 0),
+     numericInput("montly", "Monthly Premium:", value = 0),
+     numericInput("max", "Maximum out-of-pocket:", value = NULL),
+     submitButton("addPlan", "Add Plan to Compare")
+   ),
+   mainPanel(
+     tabsetPanel(
+       tabPanel("Summary of Plans",
+                h2("Header 2"),
+                sliderInput("years", "Years:", min = 1, max = 50, value = 5),
+                plotOutput("comparisonChart")
+                
+                
+       ),
+       tabPanel("One Time Injury",
+                h2("Header 2")
+       ),
+       tabPanel("Regular Medical Expenses",
+                h2("Header 2")
+       )
+     )
+   )
+)
+
+# Define server logic required to draw a histogram
+server <- function(input, output) {
+   
+  output$comparisonChart <- renderPlot({
+  
+    x <- input$years #range of time to evaluate for
+    y <- (input$monthly)*(x) #cost of insurance
+    
+    xrange <- range(x)
+    yrange <- range(y)
+    
+    plot(xrange,yrange, xlab="Time (years)", ylab="Cost ($)")
+    lines(x,y)
+  
+
+  
+  })
+
+}
+# Run the application 
+shinyApp(ui = ui, server = server)
+
