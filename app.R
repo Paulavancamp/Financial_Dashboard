@@ -1,10 +1,14 @@
 library("shiny")
+library("shinythemes")
+library(ggplot2)
 #library("DT")
 
 lastused <- "FV"
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
+  
+    theme = shinytheme("flatly"),
 
     navbarPage("Financial Tool Dashboard",
                # Application title
@@ -51,7 +55,23 @@ ui <- fluidPage(
                ), #close insurance panel
                
                tabPanel("Car Buying Calculator",
-                        h3("placeholder")
+                        sidebarPanel(
+                          numericInput("down", "Down Payment", value=0),
+                          numericInput("trade", "Trade In Value", value=0),
+                          numericInput("price", "Price of Car", value=0),
+                          radioButtons("term", "Term",
+                                       c("36" = "36",
+                                         "48" = "48",
+                                         "60" = "60",
+                                         "72" = "72")),
+                          numericInput("apr", "Interest Rate (% APR)", value=0),
+                          submitButton("Calculate Payment")
+                        ),
+                        mainPanel(
+                          textOutput("payment"),
+                          plotOutput("cashVsCarLoan")
+                          
+                        )
                         
                ), #close car purchase calculator
                
@@ -101,6 +121,23 @@ server <- function(input, output,session) {
         result <- input$PV * (1 + (input$interest)/100)^(x)
         plot(x,result)
         lines(x,result)
+    })
+    
+    output$payment <- renderText({
+      
+      total <- 0
+      
+      rate <- (input$apr/100) / 12
+      amount <- input$price - input$down - input$trade
+      term <- as.integer(input$term)
+      
+      top <- rate * ((1 + rate)^term)
+      bottom <- ((1 + rate)^term) - 1
+      
+      total <- amount * (top/bottom)
+    
+      
+      paste("Your payment is: $", total)
     })
     
     #render a line chart to visualize cost over time for each plan
