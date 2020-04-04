@@ -1,6 +1,7 @@
-library("shiny")
-library("shinythemes")
+library(shiny)
+library(shinythemes)
 library(ggplot2)
+library(scales)
 #library("DT")
 
 lastused <- "FV"
@@ -56,21 +57,22 @@ ui <- fluidPage(
                
                tabPanel("Car Buying Calculator",
                         sidebarPanel(
-                          numericInput("down", "Down Payment", value=0),
-                          numericInput("trade", "Trade In Value", value=0),
-                          numericInput("price", "Price of Car", value=0),
-                          radioButtons("term", "Term",
+                          numericInput("down", "Down Payment", value=0, min = 0),
+                          numericInput("trade", "Trade In Value", value=0, min = 0),
+                          numericInput("price", "Price of Car", value=0, min = 0),
+                          radioButtons("term", "Term (Months)",
                                        c("36" = "36",
                                          "48" = "48",
                                          "60" = "60",
                                          "72" = "72")),
-                          numericInput("apr", "Interest Rate (% APR)", value=0),
+                          numericInput("apr", "Interest Rate (% APR)", value=0, min = 0, max = 100),
                           submitButton("Calculate Payment")
                         ),
                         mainPanel(
-                          textOutput("payment"),
-                          plotOutput("cashVsCarLoan")
-                          
+                          plotOutput("cashVsCarLoan"),
+                          h3(textOutput("payment")),
+                          # h3(textOutput("vals"))
+                          #plotOutput("timeValue")
                         )
                         
                ), #close car purchase calculator
@@ -123,9 +125,34 @@ server <- function(input, output,session) {
         lines(x,result)
     })
     
+    # output$vals <- renderText({
+    #   
+    #   rate <- (input$apr/100) / 12
+    #   amount <- input$price - input$down - input$trade
+    #   term <- as.integer(input$term)
+    #   
+    #   top <- rate * ((1 + rate)^term)
+    #   bottom <- ((1 + rate)^term) - 1
+    #   
+    #   total <- amount * (top/bottom)
+    #   
+    #   overallTotal <- total * term
+    #   
+    #   
+    #   paste("Rate:", rate, 
+    #         "Amount:", amount, 
+    #         "Term:", term, 
+    #         "Top:", top, 
+    #         "Bottom:", bottom, 
+    #         "Total Per Month:", total,
+    #         "Overall Total:", overallTotal, sep=" ")
+    #   
+    #   
+    # })
+    
     output$payment <- renderText({
       
-      total <- 0
+      dollar_format(prefix = "$", suffix = "", largest_with_cents = 1e+05, big.mark = ",", negative_parens = FALSE)
       
       rate <- (input$apr/100) / 12
       amount <- input$price - input$down - input$trade
@@ -136,8 +163,96 @@ server <- function(input, output,session) {
       
       total <- amount * (top/bottom)
     
+      total <- dollar(total)
       
-      paste("Your payment is: $", total)
+      if(is.na(total)) {
+        total <- dollar(0)
+      }
+      #h1(paste("Your payment is $", total, " per month.", sep = ""))
+      paste("Your payment is ", total, " per month for ", term, " months.", sep="")
+    })
+    
+    output$cashVsCarLoan <- renderPlot({
+      
+      dollar_format(prefix = "$", suffix = "", largest_with_cents = 1e+05, big.mark = ",", negative_parens = FALSE)
+      
+      rate <- (input$apr/100) / 12
+      amount <- input$price - input$down - input$trade
+      term <- as.integer(input$term)
+      
+      top <- rate * ((1 + rate)^term)
+      bottom <- ((1 + rate)^term) - 1
+      
+      total <- amount * (top/bottom)
+      
+      total <- total * term
+      
+      total <- round(total, digits = 2)
+      
+      if(is.nan(total)) {
+        total <- 0
+      }
+      
+      primary <- "#61ABF6"
+      secondary <- "#1E4398"
+      
+      df <- data.frame(PaymentType=c("Loan", "Cash"),
+                       Amount=c(total, amount))
+      ggplot(data=df, aes(x=PaymentType, y=Amount)) +
+        geom_bar(
+          stat="identity",
+          fill = primary,
+          colour = secondary) +
+        labs(title = "Cash vs. Loan",
+             x = "Payment Type",
+             y = "Amount") +
+        geom_text(
+          size = 5,
+          label = dollar(df$Amount),
+          size = 3,
+          vjust = 1.3,
+          color = "white"
+        ) +
+        theme(
+          axis.text = element_text(color = secondary, size = 12),
+          axis.line = element_line(
+            color = secondary,
+            linetype = "solid"
+          ),
+          axis.title = element_text(color = secondary, size = 16),
+          plot.title = element_text(
+            color = secondary,
+            size = 20,
+            hjust = 0.5
+          ),
+          panel.background = element_rect(fill = "#ECF0F1", colour = "#DCE4EC"),
+          panel.grid = element_line(colour = alpha("white", 0.5))
+        )
+      
+    })
+    
+    output$timeValue <- renderPlot ({
+      
+      rate <- (input$apr/100) / 12
+      amount <- input$price - input$down - input$trade
+      term <- as.integer(input$term)
+      
+      top <- rate * ((1 + rate)^term)
+      bottom <- ((1 + rate)^term) - 1
+      
+      total <- amount * (top/bottom)
+      
+      total <- round(total, digits = 2)
+      
+      if(is.nan(total)) {
+        total <- 0
+      }
+      
+      df1 <- data.frame(matrix(0, ncol = 7, nrow = term))
+      
+      ggplot()
+      
+      
     })
     
     #render a line chart to visualize cost over time for each plan
