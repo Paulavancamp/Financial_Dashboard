@@ -37,7 +37,6 @@ ui <- fluidPage(
                           textInput("plan1", "Plan 1 Name:", "general"),
                           numericInput("monthly", "Monthly Premium", value=0),
                           
-                          
                           h4("Related Recurring Costs"),
                           numericInput("recuring", "Estimated Cost", value=0),
                           numericInput("number", "Number of Charges", value=0),
@@ -53,6 +52,7 @@ ui <- fluidPage(
                           plotOutput("insuranceCostPlot")
 
                         )
+                        #this needs serious work...............................
                ), #close insurance panel
                
                tabPanel("Car Buying Calculator",
@@ -70,7 +70,7 @@ ui <- fluidPage(
                         ),
                         mainPanel(
                           plotOutput("cashVsCarLoan"),
-                          h3(textOutput("payment")),
+                          h3(textOutput("payment"))
                           # h3(textOutput("vals"))
                           #plotOutput("timeValue")
                         )
@@ -78,8 +78,21 @@ ui <- fluidPage(
                ), #close car purchase calculator
                
                tabPanel("Mortgage Manager",
-                        h3("placeholder"),
-                        h4("https://www.excel-easy.com/examples/loan-amortization-schedule.html")
+                        sidebarPanel(
+                          numericInput("mortgage", "Loan Amount", value=0, min = 0),
+                          numericInput("mortgageTerm", "Loan Term", value=0, min = 0),
+                          numericInput("mortgageRate", "Interest Rate (% APR)", value=5, min = 0, max = 100),
+                          submitButton("Generate Schedule")
+                        ),
+                        mainPanel(
+                          #summary at the top
+                          h3(textOutput("mortgageMonthly")),
+                          h3(textOutput("accumInterest")),
+                          h3(textOutput("totalPaid")),
+                          h3(textOutput("mortgageEnd"))
+                          #table with specifics
+                          #tableOutput("amoritizationTable")
+                        )
                         
                ) #close mortgage calculator
 
@@ -157,12 +170,9 @@ server <- function(input, output,session) {
       rate <- (input$apr/100) / 12
       amount <- input$price - input$down - input$trade
       term <- as.integer(input$term)
-      
       top <- rate * ((1 + rate)^term)
       bottom <- ((1 + rate)^term) - 1
-      
       total <- amount * (top/bottom)
-    
       total <- dollar(total)
       
       if(is.na(total)) {
@@ -179,14 +189,10 @@ server <- function(input, output,session) {
       rate <- (input$apr/100) / 12
       amount <- input$price - input$down - input$trade
       term <- as.integer(input$term)
-      
       top <- rate * ((1 + rate)^term)
       bottom <- ((1 + rate)^term) - 1
-      
       total <- amount * (top/bottom)
-      
       total <- total * term
-      
       total <- round(total, digits = 2)
       
       if(is.nan(total)) {
@@ -236,12 +242,9 @@ server <- function(input, output,session) {
       rate <- (input$apr/100) / 12
       amount <- input$price - input$down - input$trade
       term <- as.integer(input$term)
-      
       top <- rate * ((1 + rate)^term)
       bottom <- ((1 + rate)^term) - 1
-      
       total <- amount * (top/bottom)
-      
       total <- round(total, digits = 2)
       
       if(is.nan(total)) {
@@ -249,7 +252,6 @@ server <- function(input, output,session) {
       }
       
       df1 <- data.frame(matrix(0, ncol = 7, nrow = term))
-      
       ggplot()
       
       
@@ -260,9 +262,39 @@ server <- function(input, output,session) {
       x <- c(0:input$planTimeline)
       result <- input$monthly*(x)*12
       plot(x,result)
-      lines(x,result, )
+      lines(x,result)
       
     })
+    
+    ############### Mortgage Tab Functions ###############
+   
+    # "mortgage", "mortgageTerm", "mortgageRate"
+
+    
+    #calculate values for the mortgage table and store in dataframe
+    output$mortgageMonthly <- renderText({
+      totalCost <- input$mortgage*(input$mortgageRate/100)+input$mortgage
+      months <- input$mortgageTerm*12
+      monthly <- totalCost/months
+      paste("Monthly Payment: ", monthly)
+      })
+    
+    output$accumInterest <- renderText({
+      #calculate here!
+      paste("Total Interest Accumulated: ")
+      })
+    
+    output$totalPaid <- renderText({
+      temp <- input$accumInterest+input$mortgage 
+      paste("Total Amount Paid: ", temp)
+      })
+    
+    output$mortgageEnd <- renderText({
+      endDate <- Sys.Date()
+      paste("Final Payment Date: ", endDate)
+      })
+    
+    #output$amoritizationTable <- renderTable(    )
     
 
 }
