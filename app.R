@@ -2,6 +2,7 @@ library(shiny)
 library(shinythemes)
 library(ggplot2)
 library(scales)
+library(lubridate)
 #library("DT")
 
 lastused <- "FV"
@@ -79,8 +80,11 @@ ui <- fluidPage(
                
                tabPanel("Mortgage Manager",
                         sidebarPanel(
-                          numericInput("mortgage", "Loan Amount", value=0, min = 0),
-                          numericInput("mortgageTerm", "Loan Term", value=0, min = 0),
+                          numericInput("mortgage", "Loan Amount", value=100000, min = 0),
+                          numericInput("mortgageLength", "Loan Length", value=1, min = 0),
+                          radioButtons("mortgageTerm", "Term",
+                                       c("years" = "Years",
+                                         "months" = "Months")),
                           numericInput("mortgageRate", "Interest Rate (% APR)", value=5, min = 0, max = 100),
                           submitButton("Generate Schedule")
                         ),
@@ -268,29 +272,50 @@ server <- function(input, output,session) {
     
     ############### Mortgage Tab Functions ###############
    
-    # "mortgage", "mortgageTerm", "mortgageRate"
-
-    
-    #calculate values for the mortgage table and store in dataframe
-    output$mortgageMonthly <- renderText({
-      totalCost <- input$mortgage*(input$mortgageRate/100)+input$mortgage
-      months <- input$mortgageTerm*12
-      monthly <- totalCost/months
-      paste("Monthly Payment: ", monthly)
-      })
-    
     output$accumInterest <- renderText({
-      #calculate here!
-      paste("Total Interest Accumulated: ")
+      if (input$mortgageTerm == "years"){
+        accum <- input$mortgageRate/input$mortgageLength*input$mortgage
+      }
+      else{  accum <- input$mortgageRate/(input$mortgageLength*12)*input$mortgage}
+      
+      paste("Total Interest Accumulated: ", format(round(accum, 2), nsmall = 2))
       })
     
     output$totalPaid <- renderText({
-      temp <- input$accumInterest+input$mortgage 
-      paste("Total Amount Paid: ", temp)
+      if (input$mortgageTerm == "years"){
+        accum <- input$mortgageRate/input$mortgageLength*input$mortgage
+      }
+      else{  accum <- input$mortgageRate/(input$mortgageLength*12)*input$mortgage}
+      paid <- accum+input$mortgage
+      
+      paste("Total Amount Paid: ", format(round(paid, 2), nsmall = 2))
       })
     
+    output$mortgageMonthly <- renderText({
+      if (input$mortgageTerm == "years"){
+        accum <- input$mortgageRate/input$mortgageLength*input$mortgage
+        totalCost <- accum+input$mortgage
+        monthly <- totalCost/input$mortgageLength/12
+      }
+      else{  
+        accum <- input$mortgageRate/(input$mortgageLength*12)*input$mortgage
+        totalCost <- accum+input$mortgage
+        monthly <- totalCost/input$mortgageLength
+      }
+      
+      paste("Monthly Payment: ", format(round(monthly, 2), nsmall = 2))
+    })
+    
+    ##NEeds work...
     output$mortgageEnd <- renderText({
-      endDate <- Sys.Date()
+      currentDate <-today()
+      endDate <-Sys.Date()
+      if (input$mortgageTerm == "Years"){ 
+        year(endDate) <- year(currentDate)+input$mortgageLength
+      }
+      else{  
+        month(endDate) <- month(currentDate)+input$mortgageLength
+      }
       paste("Final Payment Date: ", endDate)
       })
     
