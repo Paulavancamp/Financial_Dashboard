@@ -27,18 +27,44 @@ ui <- fluidPage(
                         # Sidebar with a slider input for number of bins
                         sidebarLayout(
                             sidebarPanel(
-                                numericInput("n_periods", "Periods",0, min =0),
-                                numericInput("interest", "Interest (%)",0),
-                                numericInput("PV", "Present Value",0),
-                                numericInput("FV", "Future Value", value = 0),
-                                #numericInput("PMT", "Payment", value = 0),
-                                submitButton("controller","Submit")
+                              selectInput("choice", "Choose which variable to solve for",
+                                          choices = c("Future Value",
+                                                      "Periods",
+                                                      "Interest",
+                                                      "Present Value")),
+                              numericInput("n_periods", "Periods",10, min =0),
+                              numericInput("interest", "Interest (%)",2),
+                              numericInput("PV", "Present Value",5000),
+                              numericInput("FV", "Future Value", value = 0),
+                              submitButton("Submit")
 
                             ),
                             # Show a plot of the generated distribution
                             mainPanel(
                                 plotOutput("distPlot")
                             )
+                        )
+               ),
+               tabPanel("PMT",
+                        sidebarLayout(
+                          sidebarPanel(
+                            selectInput("choice_pmt", "Choose which variable to solve for",
+                                        choices = c("Future Value",
+                                                    "Periods",
+                                                    "Interest",
+                                                    "Present Value",
+                                                    "Payment")),
+                            numericInput("n_periods2", "Periods",5, min =0),
+                            numericInput("interest2", "Interest (%)",5),
+                            numericInput("PV2", "Present Value",0, min=0),
+                            numericInput("FV2", "Future Value", value = 0),
+                            numericInput("PMT2", "Payment", value = 500),
+                            submitButton("Submit")
+                          ),
+                          mainPanel(
+                            plotOutput("distPlot2")
+                          )
+                          
                         )
                ),
                tabPanel("Insurance Comparator",
@@ -126,40 +152,126 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output,session) {
 
-
-  ############### Future Value Tab Functions ###############
-    observe({
-
-        # figure out what to calculate
-        if(input$PV == 0 || input$PV.isNull)
-            {
-            lastused <- "PV"
-        }
-        else if(input$FV == 0 || input$FV.isNull)
-        {
-            lastused <- "FV"
-        }
-
-        # Calculate some shit
-        if(lastused == "FV"){
-            temp <- (input$PV) * (1 + (input$interest)/100)^(input$n_periods)
-            updateNumericInput(session, "FV", value = temp)
-        }
-        else if(lastused == "PV") {
-            temp = input$FV / (1+ input$interest)^(input$n_periods)
-            updateNumericInput(session, "PV", value = temp)
-        }
-
-    })
+  choiceFV <- reactive({
+    switch(input$choice,
+           "Present Value" = "pv",
+           "Periods" = "n",
+           "Interest" = "i",
+           "Future Value" = "fv")
+  })
+  choicePMT <- reactive({
+    switch(input$choice_pmt,
+           "Present Value" = "pv",
+           "Periods" = "n",
+           "Interest" = "i",
+           "Future Value" = "fv",
+           "Payment" = "pmt")
+  })
+    observe({ })
 
     output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x <- c(0:input$n_periods)
-
-        #bins <- seq(min(0), max(input$n_periods), length.out = input$n_periods + 1)
-        result <- input$PV * (1 + (input$interest)/100)^(x)
-        plot(x,result)
-        lines(x,result)
+      choice <- choiceFV()
+      if(choice == "pv"){
+        #f <- function(temp) (temp * (1 + (input$interest)/100)^(input$n_periods))
+        #val <- uniroot(f, lower=0.1, upper=100000000)$root
+        temp <- (input$FV) / ( (1+input$interest/100)^(input$n_periods))
+        updateNumericInput(session, "PV", value = temp)
+      }
+      else if(choice == "fv"){
+        temp <- (input$PV) * (1 + (input$interest)/100)^(input$n_periods)
+        updateNumericInput(session, "FV", value = temp)
+      }
+      else if(choice == "n"){
+        temp <- log(input$FV/input$PV) / log(1+input$interest/100)
+        updateNumericInput(session, "n_periods", value = temp)
+      }
+      else if(choice == "i"){
+        temp <- log(input$FV/input$PV)/ (input$n_periods) * 100
+        updateNumericInput(session, "interest", value = temp)
+      }
+      
+      x <- c(0:input$n_periods)
+      result <- input$PV * (1 + (input$interest)/100)^(x)
+      plot(x,result)
+      lines(x,result)
+    })
+    
+    # PMT Tab calculations     
+    output$distPlot2 <- renderPlot({
+      # source: http://www.tvmcalcs.com/tvm/formulas/regular_annuity_formulas
+      choice <- choicePMT()
+      # Calculate some shit
+      
+      if(choice == "pv"){
+        temp <- input$PMT2 * ( ( 1 -(1/(1+(input$interest2/100))^input$n_periods2) ) / input$interest2 )
+        updateNumericInput(session, "PV2", value = temp)
+      }
+      else if(choice == "fv"){
+        cat("here\n")
+        temp <- input$PMT2 * ( ( ( 1 +(input$interest2/100))^(input$n_periods2) - 1) / (input$interest2/100))
+        updateNumericInput(session, "FV2", value = temp)
+      }
+      else if(choice == "n"){
+        
+        if(input$PV2 == 0 || is.null(input$PV2) ){
+          temp <- (log(1 + (input$FV2/input$PMT2) * (input$interest2/100)) )/ log(1+(input$interest2/100))
+          
+        }
+        else if(input$FV2 == 0 || is.null(input$FV2)){
+          temp <- (-log(1 - (input$PV2/input$PMT2) * (input$interest2/100)) )/ log(1+(input$interest2/100))
+        }
+        else{
+          # IF YOU HAVE BOTH PV AND FV ENTERED IN, DEFAULT TO NULLING OUT FV AND SOLVE FOR N
+          temp <- (log(1 + (input$FV2/input$PMT2) * (input$interest2/100)) )/ log(1+(input$interest2/100))
+          updateNumericInput(session, "FV2", value = 0)
+        }
+        updateNumericInput(session, "n_periods2", value = temp)
+        
+      }
+      else if(choice == "i"){
+        
+        if(input$PV2 == 0 || is.null(input$PV2)){
+          f <- function(interest) (input$FV2/( ( (1 + interest/100)^input$n_periods2 - 1 )/ (interest/100) ) - input$PMT)
+          temp <- uniroot(f, lower=0.1, upper=100)#$root
+          
+          # TBD hard math
+        }
+        else if(input$FV2 == 0 || is.null(input$FV2)){
+          f <- function(interest)(input$PV2 / ( ( 1 - ( 1/ (1+input$interest2/100)^input$n_periods2 ) )/ (input$interest2/100) ) - input$PMT) 
+          temp <- uniroot(f, lower=0.1, upper=100)#$root
+          # TBD hard math
+        }
+        else{
+          # IF YOU HAVE BOTH PV AND FV ENTERED IN, DEFAULT TO NULLING OUT FV AND SOLVE FOR N
+          
+          updateNumericInput(session, "FV2", value = 0)
+          f <- function(interest)(input$PV2 / ( ( 1 - ( 1/ (1+input$interest2/100)^input$n_periods2 ) )/ (input$interest2/100) ) - input$PMT) 
+          temp <- uniroot(f, lower=0.1, upper=100)$root
+        }
+        
+        updateNumericInput(session, "interest2", value = temp)
+      }
+      else if(choice == "pmt"){
+        
+        if(input$PV2 == 0 ||  is.null(input$PV2) ){
+          temp <- input$FV2/( ( (1 + input$interest2/100)^input$n_periods2 - 1 )/ (input$interest2/100) )
+        }
+        else if(input$FV == 0 || is.null(input$FV)){
+          temp <- input$PV2 / ( ( 1 - ( 1/ (1+input$interest2/100)^input$n_periods2 ) )/ (input$interest2/100) )
+        }
+        else{
+          # IF YOU HAVE BOTH PV AND FV ENTERED IN, DEFAULT TO NULLING OUT FV AND SOLVE FOR N
+          temp <- input$PV2 / ( ( 1 - ( 1/ (1+input$interest2/100)^input$n_periods2 ) )/ (input$interest2/100) )
+          updateNumericInput(session, "FV2", value = 0)
+        }
+        
+        updateNumericInput(session, "PMT2", value = temp)
+      }
+      
+      x <- c(0:input$n_periods2)
+      result <- input$PMT2 * ( ( ( 1 +input$interest2/100)^(x) - 1) / (input$interest2/100))
+      plot(x, result)#, xlim = max(x), ylim = max(result))
+      lines(x,result)
     })
     
     ############### Insurance Tab Functions ###############
