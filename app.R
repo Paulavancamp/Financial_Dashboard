@@ -3,9 +3,18 @@ library(shinythemes)
 library(ggplot2)
 library(scales)
 library(lubridate)
+
+library(data.table)
+library(dplyr)
+library(formattable)
+library(tidyr)
+
 #library("DT")
 
 lastused <- "FV"
+customGreen0 = "#DeF7E9"
+customGreen = "#71CA97"
+customRed = "#ff7f7f"
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -34,26 +43,39 @@ ui <- fluidPage(
                ),
                tabPanel("Insurance Comparator",
                         sidebarPanel(
-                          h4("Plan Specific Information"),
-                          textInput("plan1", "Plan 1 Name:", "general"),
-                          numericInput("monthly", "Monthly Premium", value=0),
-                          
-                          h4("Related Recurring Costs"),
-                          numericInput("recuring", "Estimated Cost", value=0),
-                          numericInput("number", "Number of Charges", value=0),
-                          selectInput("rate", "Each:", c("day", "week", "month", "year")),
-                          
-                          h4("One Time Accident Costs"),
-                          numericInput("singleExpense", "Total Estimated Cost", value=0),
-                          
-                          submitButton("update graph")
+                          textInput("p1", "Plan 1 Name:", "general"),
+                          numericInput("p1Monthly", "Monthly Premium", value=0),
+                          numericInput("p1Deduct", "Deductable", value=0),
+                          numericInput("p1Coin", "Coinsurance coverage (% covered by provider)", value=0),
+                          numericInput("p1Copay", "Copayment", value=0),
+                          numericInput("p1Max", "Max Out of Pocket", value=0),
+                          submitButton("update")
+                        ),
+                        sidebarPanel(
+                          textInput("p2", "Plan 2 Name:", "general"),
+                          numericInput("p2Monthly", "Monthly Premium", value=0),
+                          numericInput("p2Deduct", "Deductable", value=0),
+                          numericInput("p2Co", "Coinsurance coverage (% covered by provider)", value=0),
+                          numericInput("p2Copay", "Copayment", value=0),
+                          numericInput("p2Max", "Max Out of Pocket", value=0),
+                          submitButton("update")
+                        ),
+                        sidebarPanel(
+                          h4("Recuring Costs"),
+                          h6("For example, monthly prescriptions or annual doctors visits"),
+                          numericInput("Recuring", "Estimated Cost", value=0),
+                          numericInput("Charges", "Number of Charges", value=0),
+                          selectInput("Frequency", "Per:", c("day", "week", "month", "year")),
+                          submitButton("update")
                         ),
                         mainPanel(
-                          sliderInput("planTimeline", "Years:", 1, 50, 10),
-                          plotOutput("insuranceCostPlot")
+                         # h4("Possible one-time incident"),
+                         # sliderInput("incidentCost", "Cost:", 1, 15000, 0),
+                         # h4("One Year Cost Summary"),
+                          h3(textOutput("p1summary")),
+                          h3(textOutput("p2summary"))
 
                         )
-                        #this needs serious work...............................
                ), #close insurance panel
                
                tabPanel("Car Buying Calculator",
@@ -72,8 +94,6 @@ ui <- fluidPage(
                         mainPanel(
                           plotOutput("cashVsCarLoan"),
                           h3(textOutput("payment"))
-                          # h3(textOutput("vals"))
-                          #plotOutput("timeValue")
                         )
                         
                ), #close car purchase calculator
@@ -107,7 +127,7 @@ ui <- fluidPage(
 server <- function(input, output,session) {
 
 
-
+  ############### Future Value Tab Functions ###############
     observe({
 
         # figure out what to calculate
@@ -142,31 +162,73 @@ server <- function(input, output,session) {
         lines(x,result)
     })
     
-    # output$vals <- renderText({
-    #   
-    #   rate <- (input$apr/100) / 12
-    #   amount <- input$price - input$down - input$trade
-    #   term <- as.integer(input$term)
-    #   
-    #   top <- rate * ((1 + rate)^term)
-    #   bottom <- ((1 + rate)^term) - 1
-    #   
-    #   total <- amount * (top/bottom)
-    #   
-    #   overallTotal <- total * term
-    #   
-    #   
-    #   paste("Rate:", rate, 
-    #         "Amount:", amount, 
-    #         "Term:", term, 
-    #         "Top:", top, 
-    #         "Bottom:", bottom, 
-    #         "Total Per Month:", total,
-    #         "Overall Total:", overallTotal, sep=" ")
-    #   
-    #   
-    # })
+    ############### Insurance Tab Functions ###############
     
+    output$p1summary <- renderText({
+      
+      if(input$Recuring == 0 || is.null(input$Recuring)){
+        total <- input$p1Monthly*12
+      }
+      else{
+        #do some complicated equations factoring in the recuring costs...
+        if(input$Frequency == "day"){
+          extra <- input$Charges*input$Recuring*365 #total charges per year
+        }
+        else if(input$Frequency == "week"){
+          extra <- input$Charges*input$Recuring*52 #total charges per year
+        }
+        else if(input$Frequency == "month"){
+          extra <- input$Charges*input$Recuring*12 #total charges per year
+        }
+        else{
+          extra <- input$Charges*input$Recuring
+        }
+        
+        total <- (input$p1Monthly*12 + extra)
+      }
+      
+      ##add logic here to check if total is over the deductable
+      #and check other input info...
+      
+      paste("Your annual total would be $", total)
+    })
+    
+    output$p2summary <- renderText({
+      
+      if(input$Recuring == 0 || is.null(input$Recuring)){
+        total <- input$p2Monthly *12
+      }
+      else{
+        #do some complicated equations factoring in the recuring costs...
+        if(input$Frequency == "day"){
+          extra <- input$Charges*input$Recuring*365 #total charges per year
+        }
+        else if(input$Frequency == "week"){
+          extra <- input$Charges*input$Recuring*52 #total charges per year
+        }
+        else if(input$Frequency == "month"){
+          extra <- input$Charges*input$Recuring*12 #total charges per year
+        }
+        else{
+          extra <- input$Charges*input$Recuring
+        }
+        
+        total <- input$p2Monthly *12 + extra
+        if(total > input$p2Deduct){
+          if(input$coin != 0 ){
+            #if they have coinsurance, multiply remaining costs by % they pay
+            total <- (total- input$p2Deduct)*(1-(input$coin/100)) + input$p2Deduct
+          }
+          else{
+            #otherwise, just take the deductable
+            total <- input$p2Deduct
+          }
+        }
+      }
+      paste("Your annual total would be $", total)
+    })
+    
+    ############### Car Buying Tab Functions ###############
     output$payment <- renderText({
       
       dollar_format(prefix = "$", suffix = "", largest_with_cents = 1e+05, big.mark = ",", negative_parens = FALSE)
@@ -273,40 +335,48 @@ server <- function(input, output,session) {
     ############### Mortgage Tab Functions ###############
    
     output$accumInterest <- renderText({
-      if (input$mortgageTerm == "years"){
-        accum <- input$mortgageRate/input$mortgageLength*input$mortgage
+      if (input$mortgageTerm == "Years"){
+        n <- input$mortgageLength*12
       }
-      else{  accum <- input$mortgageRate/(input$mortgageLength*12)*input$mortgage}
+      else{  
+        n <- input$mortgageLength
+      }
+      r <- r <- (input$mortgageRate/100)/12
+      paid <- (r* input$mortgage * n)/(1-((1+r)^-n))
+      accum <- paid - input$mortgage
       
       paste("Total Interest Accumulated: ", format(round(accum, 2), nsmall = 2))
       })
     
     output$totalPaid <- renderText({
-      if (input$mortgageTerm == "years"){
-        accum <- input$mortgageRate/input$mortgageLength*input$mortgage
+      if (input$mortgageTerm == "Years"){
+        n <- input$mortgageLength*12
       }
-      else{  accum <- input$mortgageRate/(input$mortgageLength*12)*input$mortgage}
-      paid <- accum+input$mortgage
+      else{  
+        n <- input$mortgageLength
+      }
+      r <- r <- (input$mortgageRate/100)/12
+      paid <- (r* input$mortgage * n)/(1-((1+r)^-n))
       
       paste("Total Amount Paid: ", format(round(paid, 2), nsmall = 2))
       })
     
     output$mortgageMonthly <- renderText({
-      if (input$mortgageTerm == "years"){
-        accum <- input$mortgageRate/input$mortgageLength*input$mortgage
-        totalCost <- accum+input$mortgage
-        monthly <- totalCost/input$mortgageLength/12
-      }
+      if (input$mortgageTerm == "Years"){
+        n <- input$mortgageLength*12
+        }
       else{  
-        accum <- input$mortgageRate/(input$mortgageLength*12)*input$mortgage
-        totalCost <- accum+input$mortgage
-        monthly <- totalCost/input$mortgageLength
+        n <- input$mortgageLength
       }
+      
+      r <- (input$mortgageRate/100)/12
+      numerator <- r*((1+r)^n)
+      denominator <- ((1+r)^n) - 1
+      monthly <- input$mortgage*(numerator/denominator)
       
       paste("Monthly Payment: ", format(round(monthly, 2), nsmall = 2))
     })
     
-    ##NEeds work...
     output$mortgageEnd <- renderText({
       currentDate <-today()
       endDate <-Sys.Date()
@@ -318,8 +388,6 @@ server <- function(input, output,session) {
       }
       paste("Final Payment Date: ", endDate)
       })
-    
-    #output$amoritizationTable <- renderTable(    )
     
 
 }
