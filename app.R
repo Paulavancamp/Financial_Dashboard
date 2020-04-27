@@ -447,6 +447,9 @@ server <- function(input, output,session) {
     ############### Mortgage Tab Functions ###############
    
     output$accumInterest <- renderText({
+      
+      dollar_format(prefix = "$", suffix = "", largest_with_cents = 1e+05, big.mark = ",", negative_parens = FALSE)
+      
       if (input$mortgageTerm == "Years"){
         n <- input$mortgageLength*12
       }
@@ -457,7 +460,7 @@ server <- function(input, output,session) {
       paid <- (r* input$mortgage * n)/(1-((1+r)^-n))
       accum <- paid - input$mortgage
       
-      paste("Total Interest Accumulated: ", format(round(accum, 2), nsmall = 2))
+      paste("Total Interest Accumulated: ", dollar(accum))
       })
     
     output$totalPaid <- renderText({
@@ -470,7 +473,7 @@ server <- function(input, output,session) {
       r <- r <- (input$mortgageRate/100)/12
       paid <- (r* input$mortgage * n)/(1-((1+r)^-n))
       
-      paste("Total Amount Paid: ", format(round(paid, 2), nsmall = 2))
+      paste("Total Amount Paid: ", dollar(paid))
       })
     
     output$mortgageMonthly <- renderText({
@@ -486,7 +489,7 @@ server <- function(input, output,session) {
       denominator <- ((1+r)^n) - 1
       monthly <- input$mortgage*(numerator/denominator)
       
-      paste("Monthly Payment: ", format(round(monthly, 2), nsmall = 2))
+      paste("Monthly Payment: ", dollar(monthly))
     })
     
     output$mortgageEnd <- renderText({
@@ -498,7 +501,7 @@ server <- function(input, output,session) {
       else{  
         month(endDate) <- month(currentDate)+input$mortgageLength
       }
-      paste("Final Payment Date: ", endDate)
+      paste("Final Payment Date: ", format(endDate, format="%B %d, %Y"))
       })
     
 
