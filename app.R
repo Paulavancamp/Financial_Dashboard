@@ -152,6 +152,12 @@ server <- function(input, output,session) {
     observe({ })
 
     output$distPlot <- renderPlot({
+      
+      if(is.na(input$PV)){updateNumericInput(session, "PV",value = 0)}
+      if(is.na(input$FV)){updateNumericInput(session, "FV",value = 0)}
+      if(is.na(input$n_periods)){updateNumericInput(session, "n_periods",value = 0)}
+      if(is.na(input$interest)){updateNumericInput(session, "interest",value = 0)}
+      
       choice <- choiceFV()
       if(choice == "pv"){
         #f <- function(temp) (temp * (1 + (input$interest)/100)^(input$n_periods))
@@ -171,26 +177,39 @@ server <- function(input, output,session) {
         temp <- log(input$FV/input$PV)/ (input$n_periods) * 100
         updateNumericInput(session, "interest", value = temp)
       }
+      if(is.na(input$PV)){updateNumericInput(session, "PV",value = 0)}
+      if(is.na(input$FV)){updateNumericInput(session, "FV",value = 0)}
+      if(is.na(input$n_periods)){updateNumericInput(session, "n_periods",value = 0)}
+      if(is.na(input$interest)){updateNumericInput(session, "interest",value = 0)}
       
       x <- c(0:input$n_periods)
       result <- input$PV * (1 + (input$interest)/100)^(x)
       plot(x,result)
       lines(x,result)
+      
     })
     
     # PMT Tab calculations     
     output$distPlot2 <- renderPlot({
+      
+      # go through and make sure no illogical operators 
+      if(is.na(input$PV2)){updateNumericInput(session, "PV2",value = 0)}
+      if(is.na(input$FV2)){updateNumericInput(session, "FV2",value = 0)}
+      if(is.na(input$n_periods2)){updateNumericInput(session, "n_periods2",value = 0)}
+      if(is.na(input$interest2)){updateNumericInput(session, "interest2",value = 0)}
+      if(is.na(input$PMT2)){updateNumericInput(session, "PMT2",value = 0)}
       # source: http://www.tvmcalcs.com/tvm/formulas/regular_annuity_formulas
       choice <- choicePMT()
       # Calculate some shit
       
       if(choice == "pv"){
-        temp <- input$PMT2 * ( ( 1 -(1/(1+(input$interest2/100))^input$n_periods2) ) / input$interest2 )
+        temp <- input$PMT2 * ( ( 1 -(1/(1+(input$interest2/100))^input$n_periods2) ) / input$interest2/100 )
+        updateNumericInput(session, "FV2", value = 0)
         updateNumericInput(session, "PV2", value = temp)
       }
       else if(choice == "fv"){
-        cat("here\n")
         temp <- input$PMT2 * ( ( ( 1 +(input$interest2/100))^(input$n_periods2) - 1) / (input$interest2/100))
+        updateNumericInput(session, "PV2", value = 0)
         updateNumericInput(session, "FV2", value = temp)
       }
       else if(choice == "n"){
@@ -212,23 +231,52 @@ server <- function(input, output,session) {
       }
       else if(choice == "i"){
         
+        
         if(input$PV2 == 0 || is.null(input$PV2)){
-          f <- function(interest) (input$FV2/( ( (1 + interest/100)^input$n_periods2 - 1 )/ (interest/100) ) - input$PMT)
-          temp <- uniroot(f, lower=0.1, upper=100)#$root
-          
-          # TBD hard math
+          interest <- seq(0, 1, by =.001)
+          fv <- (input$PMT2 *( ( (1+interest)^input$n_periods2 - 1) / interest)) - input$FV2
+          count <- 2
+          while(TRUE){
+            hak = fv[count]
+            if( (hak < 5) && (hak > -5) ){
+              break
+            }
+            count = count +1
+          }
+          temp <- 100*interest[count]
         }
         else if(input$FV2 == 0 || is.null(input$FV2)){
-          f <- function(interest)(input$PV2 / ( ( 1 - ( 1/ (1+input$interest2/100)^input$n_periods2 ) )/ (input$interest2/100) ) - input$PMT) 
-          temp <- uniroot(f, lower=0.1, upper=100)#$root
-          # TBD hard math
+          interest <- seq(0, 1, by =.001)
+          pv <- input$PMT2 * ( ( 1 -(1/(1+(interest))^input$n_periods2) ) / interest ) - input$PV2
+          count <- 2
+          #cat("count:")
+          #cat(pv[count])
+          while(TRUE){
+            hak = pv[count]
+            if(is.na(hak)){
+              #cat("Input null \n\r")
+            }
+            else if( (hak < 5) && (hak > -5) ){
+              break
+            }
+            count = count +1
+          }
+          temp <- 100*interest[count]
         }
         else{
-          # IF YOU HAVE BOTH PV AND FV ENTERED IN, DEFAULT TO NULLING OUT FV AND SOLVE FOR N
-          
-          updateNumericInput(session, "FV2", value = 0)
-          f <- function(interest)(input$PV2 / ( ( 1 - ( 1/ (1+input$interest2/100)^input$n_periods2 ) )/ (input$interest2/100) ) - input$PMT) 
-          temp <- uniroot(f, lower=0.1, upper=100)$root
+          # IF YOU HAVE BOTH PV AND FV ENTERED IN, DEFAULT TO NULLING OUT PV AND SOLVE FOR N
+          updateNumericInput(session, "PV2", value = 0)
+          interest <- seq(0, 1, by =.001)
+          fv <- (input$PMT2 *( ( (1+interest)^input$n_periods2 - 1) / interest)) - input$FV2
+          count <- 2
+          while(TRUE){
+            hak = fv[count]
+            if( (hak < 5) && (hak > -5) ){
+              break
+            }
+            count = count +1
+          }
+          temp <- 100*interest[count]
         }
         
         updateNumericInput(session, "interest2", value = temp)
@@ -249,6 +297,11 @@ server <- function(input, output,session) {
         
         updateNumericInput(session, "PMT2", value = temp)
       }
+      if(is.na(input$PV2)){updateNumericInput(session, "PV2",value = 0)}
+      if(is.na(input$FV2)){updateNumericInput(session, "FV2",value = 0)}
+      if(is.na(input$n_periods2)){updateNumericInput(session, "n_periods2",value = 0)}
+      if(is.na(input$interest2)){updateNumericInput(session, "interest2",value = 0)}
+      if(is.na(input$PMT2)){updateNumericInput(session, "PMT2",value = 0)}
       
       x <- c(0:input$n_periods2)
       result <- input$PMT2 * ( ( ( 1 +input$interest2/100)^(x) - 1) / (input$interest2/100))
