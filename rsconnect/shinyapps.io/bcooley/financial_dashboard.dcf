@@ -1,0 +1,10 @@
+name: financial_dashboard
+title:
+username:
+account: bcooley
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2198804
+bundleId: 3075130
+url: https://bcooley.shinyapps.io/financial_dashboard/
+when: 1588045312.15523
