@@ -47,7 +47,7 @@ ui <- fluidPage(
                                                     "Payment")),
                             numericInput("n_periods2", "Periods",5, min =0),
                             numericInput("interest2", "Interest (%)",5),
-                            numericInput("PV2", "Present Value",0, min=0),
+                            numericInput("PV2", "Present Value",0),
                             numericInput("FV2", "Future Value", value = 0),
                             numericInput("PMT2", "Payment", value = 500),
                             submitButton("Submit")
@@ -213,31 +213,36 @@ server <- function(input, output,session) {
       if(is.na(input$PMT2)){updateNumericInput(session, "PMT2",value = 0)}
       # source: http://www.tvmcalcs.com/tvm/formulas/regular_annuity_formulas
       choice <- choicePMT()
-      # Calculate some shit
       
+      graphChoice <- "fv"
       if(choice == "pv"){
-        temp <- input$PMT2 * ( ( 1 -(1/(1+(input$interest2/100))^input$n_periods2) ) / input$interest2/100 )
+        temp <- input$PMT2 * ( ( 1 -(1/(1+(input$interest2/100))^input$n_periods2) ) / (input$interest2/100) )
         updateNumericInput(session, "FV2", value = 0)
         updateNumericInput(session, "PV2", value = temp)
+        graphChoice <- "pv"
       }
       else if(choice == "fv"){
         temp <- input$PMT2 * ( ( ( 1 +(input$interest2/100))^(input$n_periods2) - 1) / (input$interest2/100))
         updateNumericInput(session, "PV2", value = 0)
         updateNumericInput(session, "FV2", value = temp)
+        graphChoice <- "fv"
       }
       else if(choice == "n"){
         
         if(input$PV2 == 0 || is.null(input$PV2) ){
           temp <- (log(1 + (input$FV2/input$PMT2) * (input$interest2/100)) )/ log(1+(input$interest2/100))
+          graphChoice <- "fv"
           
         }
         else if(input$FV2 == 0 || is.null(input$FV2)){
           temp <- (-log(1 - (input$PV2/input$PMT2) * (input$interest2/100)) )/ log(1+(input$interest2/100))
+          graphChoice <- "pv"
         }
         else{
           # IF YOU HAVE BOTH PV AND FV ENTERED IN, DEFAULT TO NULLING OUT FV AND SOLVE FOR N
           temp <- (log(1 + (input$FV2/input$PMT2) * (input$interest2/100)) )/ log(1+(input$interest2/100))
           updateNumericInput(session, "FV2", value = 0)
+          graphChoice <- "fv"
         }
         updateNumericInput(session, "n_periods2", value = temp)
         
@@ -246,24 +251,28 @@ server <- function(input, output,session) {
         
         
         if(input$PV2 == 0 || is.null(input$PV2)){
-          interest <- seq(0, 1, by =.001)
+          interest <- seq(-1, 1, by =.001)
           fv <- (input$PMT2 *( ( (1+interest)^input$n_periods2 - 1) / interest)) - input$FV2
           count <- 2
           while(TRUE){
+            
             hak = fv[count]
-            if( (hak < 5) && (hak > -5) ){
+            if(is.na(hak)){
+
+            }
+            else if( (hak < 5) && (hak > -5) ){
               break
             }
             count = count +1
           }
           temp <- 100*interest[count]
+          graphChoice <- "fv"
         }
         else if(input$FV2 == 0 || is.null(input$FV2)){
-          interest <- seq(0, 1, by =.001)
+          interest <- seq(-1, 1, by =.001)
           pv <- input$PMT2 * ( ( 1 -(1/(1+(interest))^input$n_periods2) ) / interest ) - input$PV2
           count <- 2
-          #cat("count:")
-          #cat(pv[count])
+
           while(TRUE){
             hak = pv[count]
             if(is.na(hak)){
@@ -275,21 +284,26 @@ server <- function(input, output,session) {
             count = count +1
           }
           temp <- 100*interest[count]
+          graphChoice <- "pv"
         }
         else{
           # IF YOU HAVE BOTH PV AND FV ENTERED IN, DEFAULT TO NULLING OUT PV AND SOLVE FOR N
           updateNumericInput(session, "PV2", value = 0)
-          interest <- seq(0, 1, by =.001)
+          interest <- seq(-1, 1, by =.001)
           fv <- (input$PMT2 *( ( (1+interest)^input$n_periods2 - 1) / interest)) - input$FV2
           count <- 2
           while(TRUE){
             hak = fv[count]
-            if( (hak < 5) && (hak > -5) ){
+            if(is.na(hak)){
+              #cat("Input null \n\r")
+            }
+            else if( (hak < 5) && (hak > -5) ){
               break
             }
             count = count +1
           }
           temp <- 100*interest[count]
+          graphChoice <- "fv"
         }
         
         updateNumericInput(session, "interest2", value = temp)
@@ -298,13 +312,16 @@ server <- function(input, output,session) {
         
         if(input$PV2 == 0 ||  is.null(input$PV2) ){
           temp <- input$FV2/( ( (1 + input$interest2/100)^input$n_periods2 - 1 )/ (input$interest2/100) )
+          graphChoice <- "fv"
         }
         else if(input$FV == 0 || is.null(input$FV)){
           temp <- input$PV2 / ( ( 1 - ( 1/ (1+input$interest2/100)^input$n_periods2 ) )/ (input$interest2/100) )
+          graphChoice <- "pv"
         }
         else{
           # IF YOU HAVE BOTH PV AND FV ENTERED IN, DEFAULT TO NULLING OUT FV AND SOLVE FOR N
           temp <- input$PV2 / ( ( 1 - ( 1/ (1+input$interest2/100)^input$n_periods2 ) )/ (input$interest2/100) )
+          graphChoice <- "pv"
           updateNumericInput(session, "FV2", value = 0)
         }
         
@@ -317,7 +334,15 @@ server <- function(input, output,session) {
       if(is.na(input$PMT2)){updateNumericInput(session, "PMT2",value = 0)}
       
       x <- c(0:input$n_periods2)
-      result <- input$PMT2 * ( ( ( 1 +input$interest2/100)^(x) - 1) / (input$interest2/100))
+      if(graphChoice == "fv"){
+        cat("future value")
+        result <- input$PMT2 * ( ( ( 1 +input$interest2/100)^(x) - 1) / (input$interest2/100))
+      }
+      else{
+        cat("Present value")
+        result <- input$PMT2 * ( ( 1 -(1/(1+(input$interest2/100))^x) ) / (input$interest2/100) )
+      }
+      
       plot(x, result)#, xlim = max(x), ylim = max(result))
       lines(x,result)
     })
