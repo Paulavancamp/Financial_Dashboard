@@ -589,40 +589,47 @@ server <- function(input, output,session) {
    
     output$accumInterest <- renderText({
       dollar_format(prefix = "$", suffix = "", largest_with_cents = 1e+05, big.mark = ",", negative_parens = FALSE)
-      if (input$mortgageTerm == "years"){
-        accum <- input$mortgageRate/input$mortgageLength*input$mortgage
+      if (input$mortgageTerm == "Years"){
+        n <- input$mortgageLength*12
       }
-      else{  accum <- input$mortgageRate/(input$mortgageLength*12)*input$mortgage}
+      else{  
+        n <- input$mortgageLength
+      }
+      r <- r <- (input$mortgageRate/100)/12
+      paid <- (r* input$mortgage * n)/(1-((1+r)^-n))
+      accum <- paid - input$mortgage
       
       paste("Total Interest Accumulated: ", dollar(accum))
+      
       })
     
     output$totalPaid <- renderText({
-      if (input$mortgageTerm == "years"){
-        accum <- input$mortgageRate/input$mortgageLength*input$mortgage
+      if (input$mortgageTerm == "Years"){
+        n <- input$mortgageLength*12
       }
-      else{  accum <- input$mortgageRate/(input$mortgageLength*12)*input$mortgage}
-      paid <- accum+input$mortgage
-      
+      else{  
+        n <- input$mortgageLength
+      }
+      r <- r <- (input$mortgageRate/100)/12
+      paid <- (r* input$mortgage * n)/(1-((1+r)^-n))
       paste("Total Amount Paid: ", dollar(paid))
       })
     
     output$mortgageMonthly <- renderText({
-      if (input$mortgageTerm == "years"){
-        accum <- input$mortgageRate/input$mortgageLength*input$mortgage
-        totalCost <- accum+input$mortgage
-        monthly <- totalCost/input$mortgageLength/12
+      if (input$mortgageTerm == "Years"){
+        n <- input$mortgageLength*12
       }
-      else{  
-        accum <- input$mortgageRate/(input$mortgageLength*12)*input$mortgage
-        totalCost <- accum+input$mortgage
-        monthly <- totalCost/input$mortgageLength
+      else{   
+        n <- input$mortgageLength
       }
       
+      r <- (input$mortgageRate/100)/12
+      numerator <- r*((1+r)^n)
+      denominator <- ((1+r)^n) - 1
+      monthly <- input$mortgage*(numerator/denominator)
       paste("Monthly Payment: ", dollar(monthly))
     })
     
-    ##NEeds work...
     output$mortgageEnd <- renderText({
       currentDate <-today()
       endDate <-Sys.Date()
