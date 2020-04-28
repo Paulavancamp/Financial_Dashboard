@@ -14,7 +14,7 @@ ui <- fluidPage(
 
     navbarPage("Financial Tool Dashboard",
                # Application title
-               tabPanel("Future Value",
+               tabPanel("TVM",
                         # Sidebar with a slider input for number of bins
                         sidebarLayout(
                             sidebarPanel(
@@ -36,7 +36,7 @@ ui <- fluidPage(
                             )
                         )
                ),
-               tabPanel("PMT",
+               tabPanel("TVM with PMT",
                         sidebarLayout(
                           sidebarPanel(
                             selectInput("choice_pmt", "Choose which variable to solve for",
@@ -197,7 +197,7 @@ server <- function(input, output,session) {
       
       x <- c(0:input$n_periods)
       result <- input$PV * (1 + (input$interest)/100)^(x)
-      plot(x,result)
+      plot(x,result, xlab="Periods", ylab="Value ($)")
       lines(x,result)
       
     })
@@ -343,7 +343,7 @@ server <- function(input, output,session) {
         result <- input$PMT2 * ( ( 1 -(1/(1+(input$interest2/100))^x) ) / (input$interest2/100) )
       }
       
-      plot(x, result)#, xlim = max(x), ylim = max(result))
+      plot(x, result, xlab="Periods", ylab="Value ($)")#, xlim = max(x), ylim = max(result))
       lines(x,result)
     })
     
